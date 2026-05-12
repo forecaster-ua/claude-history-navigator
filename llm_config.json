@@ -1,0 +1,5 @@
+{
+  "provider": "google",
+  "model": "gemini-2.5-flash",
+  "max_input_chars": 80000
+}

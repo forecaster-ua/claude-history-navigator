@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude History Navigator</title>
+  <link rel="icon" type="image/svg+xml" href="static/favicon.svg">
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">
+    <div class="logo-icon">◈</div>
+    Claude History
+  </a>
+
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search-input" name="claude-history-search" placeholder="Search sessions…" autocomplete="on" spellcheck="false">
+    <div class="mode-pills">
+      <button class="active" data-mode="text">Text</button>
+      <button data-mode="semantic">Brain</button>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <span id="stats" class="stats-badge">—</span>
+    <button class="icon-btn" id="refresh-btn" title="Re-index">↻</button>
+    <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
+  </div>
+</header>
+
+<main>
+  <div id="sidebar">
+    <div id="sessions-list">
+      <div class="loading-row" style="padding:12px 12px"><span class="spinner"></span> Loading sessions…</div>
+    </div>
+  </div>
+
+  <div id="viewer">
+    <div id="conv-toolbar">
+      <span id="conv-title">Select a session</span>
+      <button class="toolbar-btn brain" id="brain-search-btn" style="display:none">⚡ Brain Search</button>
+      <button class="toolbar-btn brain" id="brain-save-btn" style="display:none">⬆ Save to Brain</button>
+      <button class="toolbar-btn context" id="context-btn" style="display:none" title="Generate AI context summary">◈ Context</button>
+      <button class="toolbar-btn context" id="context-view-btn" style="display:none" title="View cached context">◈ View Context</button>
+      <button class="toolbar-btn download" id="download-btn" style="display:none" title="Download as Markdown">⬇ Download</button>
+      <button class="toolbar-btn danger" id="delete-btn" style="display:none" title="Delete this session">🗑 Delete</button>
+    </div>
+
+    <div id="messages">
+      <div class="welcome">
+        <div class="welcome-icon">◈</div>
+        <h3>Claude History Navigator</h3>
+        <p>Select a session from the sidebar or use search to find conversations</p>
+      </div>
+    </div>
+    <div id="search-results"></div>
+  </div>
+</main>
+
+<button id="sel-save">⬆ Save to Brain</button>
+<div id="toast"></div>
+
+<!-- Context generation popup -->
+<div id="ctx-popup-overlay" style="display:none">
+  <div id="ctx-popup">
+    <div id="ctx-popup-header">
+      <span>◈ Generate Context</span>
+      <button class="icon-btn" id="ctx-popup-close">✕</button>
+    </div>
+    <div id="ctx-popup-cached-badge" style="display:none"></div>
+    <div class="ctx-popup-row">
+      <label>Language</label>
+      <div class="pill-group" id="ctx-lang-pills">
+        <button class="pill active" data-val="en">EN</button>
+        <button class="pill" data-val="ru">RU</button>
+        <button class="pill" data-val="it">IT</button>
+        <button class="pill" data-val="de">DE</button>
+        <button class="pill" data-val="es">ES</button>
+        <button class="pill" data-val="auto">Auto</button>
+      </div>
+    </div>
+    <div class="ctx-popup-row">
+      <label>Mode</label>
+      <div class="pill-group" id="ctx-mode-pills">
+        <button class="pill" data-val="short">Short</button>
+        <button class="pill" data-val="declarative">Declarative</button>
+        <button class="pill active" data-val="full">Full</button>
+        <button class="pill" data-val="max">Max</button>
+      </div>
+    </div>
+    <div class="ctx-popup-row">
+      <label>Provider</label>
+      <select id="ctx-provider-select"></select>
+    </div>
+    <div id="ctx-popup-actions">
+      <button class="toolbar-btn context" id="ctx-generate-btn">◈ Generate</button>
+      <button class="toolbar-btn" id="ctx-update-btn" style="display:none">⟳ Update</button>
+      <button class="toolbar-btn download" id="ctx-view-cached-btn" style="display:none">View Cached</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context modal -->
+<div id="modal-overlay" style="display:none">
+  <div id="modal">
+    <div id="modal-header">
+      <span id="modal-title">◈ Session Context</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="modal-provider"></span>
+        <button class="toolbar-btn brain" id="modal-brain-btn">⬆ Brain</button>
+        <button class="toolbar-btn download" id="modal-copy-btn">⎘ Copy</button>
+        <button class="icon-btn" id="modal-close">✕</button>
+      </div>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Settings panel -->
+<div id="settings-overlay" style="display:none">
+  <div id="settings-panel">
+    <div id="settings-header">
+      <span>⚙ Settings</span>
+      <button class="icon-btn" id="settings-close">✕</button>
+    </div>
+    <div id="settings-body">
+      <section class="settings-section">
+        <h4>Active LLM</h4>
+        <div class="settings-row">
+          <label>Provider</label>
+          <select id="set-provider"></select>
+        </div>
+        <div class="settings-row">
+          <label>Model</label>
+          <input type="text" id="set-model" placeholder="e.g. gemini-2.5-flash">
+        </div>
+        <button class="toolbar-btn context" id="set-save-btn">Save</button>
+      </section>
+      <section class="settings-section">
+        <h4>API Keys</h4>
+        <div id="set-keys-list"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="static/app.js"></script>
+</body>
+</html>
