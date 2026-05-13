@@ -245,6 +245,7 @@ async def download_session(session_id: str):
 
 CONTEXT_SYSTEMS = {
     "en": "You are a technical conversation analyst. Create a structured, concise session context in English.",
+    "uk": "Ти аналітик технічних переписок. Створи структурований, лаконічний контекст сесії українською мовою.",
     "ru": "Ты аналитик технических переписок. Создай структурированный, лаконичный контекст сессии на русском языке.",
     "it": "Sei un analista di conversazioni tecniche. Crea un contesto strutturato e conciso della sessione in italiano.",
     "de": "Du bist ein technischer Gesprächsanalyst. Erstelle einen strukturierten, prägnanten Sitzungskontext auf Deutsch.",
@@ -299,7 +300,9 @@ def detect_lang(text: str) -> str:
     cyrillic = sum(1 for c in text if 'Ѐ' <= c <= 'ӿ')
     latin = sum(1 for c in text if c.isascii() and c.isalpha())
     if cyrillic > latin:
-        return "ru"
+        # Ukrainian-specific letters: і, ї, є, ґ
+        ukrainian = sum(1 for c in text if c in 'іїєґІЇЄҐ')
+        return "uk" if ukrainian > cyrillic * 0.05 else "ru"
     return "en"
 
 
