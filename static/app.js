@@ -404,10 +404,7 @@ function openCtxPopup() {
 }
 
 document.getElementById('context-btn').onclick = openCtxPopup;
-document.getElementById('context-view-btn').onclick = () => {
-  if (ctxCacheInfo?.cached) showModal(ctxCacheInfo.context_text, `${ctxCacheInfo.provider} / ${ctxCacheInfo.model} · ${ctxCacheInfo.language.toUpperCase()} / ${ctxCacheInfo.mode}`);
-  else openCtxPopup();
-};
+document.getElementById('context-view-btn').onclick = () => showAllContexts();
 
 document.getElementById('ctx-popup-close').onclick = () => {
   document.getElementById('ctx-popup-overlay').style.display = 'none';
@@ -457,6 +454,51 @@ document.getElementById('ctx-view-cached-btn').onclick = () => {
     showModal(ctxCacheInfo.context_text, `${ctxCacheInfo.provider} / ${ctxCacheInfo.model} · ${ctxCacheInfo.language?.toUpperCase()} / ${ctxCacheInfo.mode}`);
 };
 
+async function showAllContexts() {
+  if (!currentSessionId) return;
+  try {
+    const d = await api(`/api/sessions/${currentSessionId}/contexts`);
+    const contexts = d.contexts || [];
+    if (!contexts.length) { openCtxPopup(); return; }
+    showModalWithTabs(contexts);
+  } catch (e) {
+    toast('Error loading contexts: ' + e.message, true);
+  }
+}
+
+function showModalWithTabs(contexts) {
+  const tabsEl = document.getElementById('modal-tabs');
+  tabsEl.innerHTML = '';
+
+  let active = contexts[0];
+
+  function renderTab(ctx, idx) {
+    const tab = el('div', `modal-tab${ctx.is_stale ? ' stale' : ''}${idx === 0 ? ' active' : ''}`);
+    tab.textContent = `${ctx.language.toUpperCase()}/${ctx.mode} · ${ctx.generated_ago}`;
+    tab.title = `${ctx.provider}/${ctx.model}${ctx.is_stale ? ' · has new messages' : ''}`;
+    tab.onclick = () => {
+      tabsEl.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      active = ctx;
+      renderModalBody(ctx);
+      document.getElementById('modal-provider').textContent =
+        `${ctx.provider} / ${ctx.model}`;
+    };
+    tabsEl.appendChild(tab);
+  }
+
+  contexts.forEach((ctx, i) => renderTab(ctx, i));
+  renderModalBody(active);
+  document.getElementById('modal-provider').textContent =
+    `${active.provider} / ${active.model}`;
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+
+function renderModalBody(ctx) {
+  const body = document.getElementById('modal-body');
+  body.innerHTML = markdownToHtml(ctx.context_text || '');
+}
+
 function updateContextBtns() {
   const viewBtn = document.getElementById('context-view-btn');
   if (ctxCacheInfo?.cached) {
@@ -465,12 +507,21 @@ function updateContextBtns() {
   } else {
     viewBtn.style.display = 'none';
   }
+  // Update count badge async
+  if (currentSessionId) {
+    api(`/api/sessions/${currentSessionId}/contexts`)
+      .then(d => {
+        const n = d.contexts?.length || 0;
+        if (n > 0) {
+          viewBtn.style.display = '';
+          viewBtn.textContent = `◈ View Context${n > 1 ? ` (${n})` : ''}`;
+        }
+      }).catch(() => {});
+  }
 }
 
-function showModal(markdown, providerLabel) {
-  document.getElementById('modal-provider').textContent = providerLabel || '';
-  const body = document.getElementById('modal-body');
-  body.innerHTML = markdown
+function markdownToHtml(md) {
+  return md
     .replace(/^# (.+)$/gm, '<h1 style="font-size:15px;color:var(--text);margin-bottom:8px">$1</h1>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^### (.+)$/gm, '<h3 style="color:var(--text2);font-size:13px;margin:10px 0 4px">$1</h3>')
@@ -479,6 +530,12 @@ function showModal(markdown, providerLabel) {
     .replace(/^- (.+)$/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/gs, m => `<ul style="padding-left:16px;margin:4px 0">${m}</ul>`)
     .replace(/\n/g, '<br>');
+}
+
+function showModal(markdown, providerLabel) {
+  document.getElementById('modal-provider').textContent = providerLabel || '';
+  document.getElementById('modal-tabs').innerHTML = '';
+  document.getElementById('modal-body').innerHTML = markdownToHtml(markdown);
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 

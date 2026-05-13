@@ -572,6 +572,34 @@ main {
 }
 #sel-save:hover { opacity: 0.88; }
 
+/* ── Modal tabs ─────────────────────────────────────────── */
+#modal-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  background: var(--bg1);
+  flex-shrink: 0;
+}
+#modal-tabs:empty { display: none; }
+.modal-tab {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.modal-tab:hover { border-color: var(--accent); color: var(--accent); }
+.modal-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.modal-tab.stale { border-color: var(--orange); color: var(--orange); }
+.modal-tab.stale.active { background: var(--orange); color: #fff; }
+
 /* ── Context popup ──────────────────────────────────────── */
 #ctx-popup-overlay {
   position: fixed; inset: 0;

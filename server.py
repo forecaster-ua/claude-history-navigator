@@ -352,6 +352,43 @@ def _truncate(text: str, max_chars: int) -> str:
     return text[:half] + "\n\n[... middle truncated ...]\n\n" + text[-half:]
 
 
+@app.get("/api/sessions/{session_id}/contexts")
+async def list_contexts(session_id: str):
+    """Return all cached context combinations for a session."""
+    with db() as conn:
+        rows = conn.execute("""
+            SELECT language, mode, context_text, generated_at, provider, model, message_count
+            FROM session_contexts WHERE session_id=? ORDER BY generated_at DESC
+        """, (session_id,)).fetchall()
+        session = conn.execute(
+            "SELECT message_count FROM sessions WHERE id=?", (session_id,)
+        ).fetchone()
+
+    import datetime
+    result = []
+    for r in rows:
+        delta = datetime.datetime.now().timestamp() - (r["generated_at"] or 0)
+        if delta < 3600:
+            ago = f"{int(delta/60)}m ago"
+        elif delta < 86400:
+            ago = f"{int(delta/3600)}h ago"
+        else:
+            ago = f"{int(delta/86400)}d ago"
+        is_stale = session and r["message_count"] < session["message_count"]
+        result.append({
+            "language": r["language"],
+            "mode": r["mode"],
+            "context_text": r["context_text"],
+            "generated_ago": ago,
+            "provider": r["provider"],
+            "model": r["model"],
+            "message_count": r["message_count"],
+            "is_stale": bool(is_stale),
+        })
+
+    return {"contexts": result, "session_message_count": session["message_count"] if session else 0}
+
+
 @app.get("/api/sessions/{session_id}/context")
 async def get_context(session_id: str, lang: str = "en", mode: str = "full"):
     with db() as conn:
