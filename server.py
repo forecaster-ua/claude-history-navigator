@@ -250,6 +250,7 @@ CONTEXT_SYSTEMS = {
     "it": "Sei un analista di conversazioni tecniche. Crea un contesto strutturato e conciso della sessione in italiano.",
     "de": "Du bist ein technischer Gesprächsanalyst. Erstelle einen strukturierten, prägnanten Sitzungskontext auf Deutsch.",
     "es": "Eres un analista de conversaciones técnicas. Crea un contexto de sesión estructurado y conciso en español.",
+    "pt": "Você é um analista de conversas técnicas. Crie um contexto de sessão estruturado e conciso em português brasileiro.",
 }
 
 CONTEXT_MODE_PROMPTS = {

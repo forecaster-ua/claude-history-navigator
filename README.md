@@ -14,7 +14,7 @@ Claude Code stores every conversation in `~/.claude/projects/*/` as JSONL files.
 - **Full-text search** — SQLite FTS5 across all sessions and all projects
 - **Semantic search** — optional integration with [open-brain](https://github.com/forecaster-ua/open-brain) API
 - **AI Context generation** — structured summaries via any LLM provider
-  - Languages: EN / **UA** / RU / IT / DE / ES / Auto-detect
+  - Languages: EN / **UA** / RU / IT / DE / ES / PT-BR / Auto-detect
   - Modes: Short / Declarative / Full / Max
   - **Cached per (session × language × mode)** — no redundant LLM calls
   - **Incremental update** — only sends new messages to LLM, not the full session
