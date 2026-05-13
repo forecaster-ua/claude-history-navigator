@@ -179,10 +179,41 @@ def parse_jsonl(filepath: str) -> dict:
     }
 
 
-def index_all():
-    if not os.path.isdir(PROJECTS_ROOT):
-        return
+def reconcile_stale() -> int:
+    """Remove DB entries whose files no longer exist on disk. Returns count removed."""
+    removed = 0
+    with _write_lock:
+        conn = _conn()
+        try:
+            rows = conn.execute(
+                "SELECT id, project_dir, filename FROM sessions"
+            ).fetchall()
+            stale_ids = []
+            for row in rows:
+                filepath = os.path.join(PROJECTS_ROOT, row["project_dir"], row["filename"])
+                if not os.path.exists(filepath):
+                    stale_ids.append(row["id"])
+            for sid in stale_ids:
+                conn.execute("DELETE FROM sessions_fts WHERE id=?", (sid,))
+                conn.execute("DELETE FROM sessions WHERE id=?", (sid,))
+                conn.execute("DELETE FROM sessions_text WHERE id=?", (sid,))
+                conn.execute("DELETE FROM session_contexts WHERE session_id=?", (sid,))
+                removed += 1
+            if stale_ids:
+                conn.commit()
+        finally:
+            conn.close()
+    if removed:
+        logger.info(f"Reconciliation: removed {removed} stale entries")
+    return removed
 
+
+def index_all() -> int:
+    """Index new/changed files. Returns count of newly indexed sessions."""
+    if not os.path.isdir(PROJECTS_ROOT):
+        return 0
+
+    added = 0
     with _write_lock:
         conn = _conn()
         try:
@@ -219,7 +250,6 @@ def index_all():
                             time.time()
                         ))
 
-                        # FTS: delete old entry then insert fresh
                         conn.execute(
                             "DELETE FROM sessions_fts WHERE id=?", (parsed["session_id"],)
                         )
@@ -227,6 +257,7 @@ def index_all():
                             "INSERT INTO sessions_fts(id, content) VALUES (?,?)",
                             (parsed["session_id"], parsed["all_text"])
                         )
+                        added += 1
 
                     except Exception as e:
                         logger.warning(f"Failed to index {jsonl_file}: {e}")
@@ -235,7 +266,8 @@ def index_all():
         finally:
             conn.close()
 
-    logger.info("Indexing complete")
+    logger.info(f"Indexing complete: {added} new/updated")
+    return added
 
 
 def start_background_indexer(interval: int = 60):

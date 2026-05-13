@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 import io
 from pydantic import BaseModel
 
-from indexer import (start_background_indexer, open_db, index_all,
+from indexer import (start_background_indexer, open_db, index_all, reconcile_stale,
                      PROJECTS_ROOT, DB_PATH,
                      get_context_cache, save_context_cache, delete_context_cache)
 from brain_client import brain_search, brain_save
@@ -44,12 +44,18 @@ def db():
 @app.get("/api/sessions")
 async def list_sessions(project_dir: Optional[str] = None):
     with db() as conn:
-        q = "SELECT id, project_dir, project_path, filename, date, size_bytes, message_count, first_message FROM sessions"
+        q = """
+            SELECT s.id, s.project_dir, s.project_path, s.filename, s.date,
+                   s.size_bytes, s.message_count, s.first_message,
+                   CASE WHEN COUNT(sc.session_id) > 0 THEN 1 ELSE 0 END AS has_context
+            FROM sessions s
+            LEFT JOIN session_contexts sc ON sc.session_id = s.id
+        """
         params = []
         if project_dir:
-            q += " WHERE project_dir = ?"
+            q += " WHERE s.project_dir = ?"
             params.append(project_dir)
-        q += " ORDER BY date DESC"
+        q += " GROUP BY s.id ORDER BY s.date DESC"
         rows = conn.execute(q, params).fetchall()
 
     projects: dict = {}
@@ -63,6 +69,7 @@ async def list_sessions(project_dir: Optional[str] = None):
             "size_bytes": row["size_bytes"],
             "message_count": row["message_count"],
             "first_message": row["first_message"],
+            "has_context": bool(row["has_context"]),
         })
     return {"projects": list(projects.values())}
 
@@ -117,25 +124,51 @@ async def search(q: str = Query(..., min_length=1), mode: str = "text", limit: i
         except Exception as e:
             raise HTTPException(502, f"Brain API error: {e}")
 
-    # Sanitize FTS5 query — strip special chars that break the parser
-    safe_q = " ".join(
-        w for w in q.replace('"', '').replace("'", "").replace("*", "").split()
-        if w
-    )
+    def build_fts_query(raw: str, allow_phrases: bool) -> str:
+        # Extract quoted phrases and unquoted terms separately
+        import re
+        tokens = []
+        if allow_phrases:
+            for part in re.findall(r'"[^"]+"|[^\s"]+', raw):
+                if part.startswith('"'):
+                    # Keep well-formed phrase as-is, sanitize inner text
+                    inner = re.sub(r"[^a-zA-Z0-9а-яА-ЯёЁ\s\-]", "", part[1:-1]).strip()
+                    if inner:
+                        tokens.append(f'"{inner}"')
+                else:
+                    word = re.sub(r"[^a-zA-Z0-9а-яА-ЯёЁ\-]", "", part)
+                    if word:
+                        tokens.append(word)
+        else:
+            for word in re.sub(r'[^a-zA-Z0-9а-яА-ЯёЁ\s\-]', ' ', raw).split():
+                if word:
+                    tokens.append(word)
+        return " ".join(tokens)
+
+    def run_fts(conn, fts_q: str, limit: int):
+        return conn.execute("""
+            SELECT s.id, s.project_path, s.date, s.size_bytes, s.message_count,
+                   snippet(sessions_fts, 1, '<mark>', '</mark>', '...', 20) as snippet
+            FROM sessions_fts
+            JOIN sessions s ON s.id = sessions_fts.id
+            WHERE sessions_fts MATCH ?
+            ORDER BY rank
+            LIMIT ?
+        """, (fts_q, limit)).fetchall()
+
+    has_phrase = '"' in q
+    safe_q = build_fts_query(q, allow_phrases=has_phrase)
     if not safe_q:
         return {"mode": "text", "results": [], "total": 0}
 
     try:
         with db() as conn:
-            rows = conn.execute("""
-                SELECT s.id, s.project_path, s.date, s.size_bytes, s.message_count,
-                       snippet(sessions_fts, 1, '<mark>', '</mark>', '...', 20) as snippet
-                FROM sessions_fts
-                JOIN sessions s ON s.id = sessions_fts.id
-                WHERE sessions_fts MATCH ?
-                ORDER BY rank
-                LIMIT ?
-            """, (safe_q, limit)).fetchall()
+            rows = run_fts(conn, safe_q, limit)
+            # Fallback to individual words if phrase search returns nothing
+            if not rows and has_phrase:
+                fallback_q = build_fts_query(q, allow_phrases=False)
+                if fallback_q:
+                    rows = run_fts(conn, fallback_q, limit)
         return {"mode": "text", "results": [dict(r) for r in rows], "total": len(rows)}
     except sqlite3.OperationalError as e:
         raise HTTPException(400, f"Search query error: {e}")
@@ -602,10 +635,11 @@ async def api_brain_save(req: BrainSaveRequest):
 
 @app.post("/api/index/refresh")
 async def refresh_index():
-    index_all()
+    removed = reconcile_stale()
+    added = index_all()
     with db() as conn:
-        count = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
-    return {"ok": True, "total_sessions": count}
+        total = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+    return {"ok": True, "added": added, "removed": removed, "total_sessions": total}
 
 
 @app.get("/api/stats")

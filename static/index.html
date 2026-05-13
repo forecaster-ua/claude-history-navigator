@@ -36,11 +36,19 @@
     <div id="sessions-list">
       <div class="loading-row" style="padding:12px 12px"><span class="spinner"></span> Loading sessions…</div>
     </div>
+    <div id="sidebar-footer">
+      <button id="sidebar-refresh-btn" title="Reconcile index with disk">↻ Refresh Index</button>
+    </div>
   </div>
 
   <div id="viewer">
     <div id="conv-toolbar">
       <span id="conv-title">Select a session</span>
+      <div id="match-nav" style="display:none">
+        <button class="match-nav-btn" id="match-prev" title="Previous match">↑</button>
+        <span id="match-count"></span>
+        <button class="match-nav-btn" id="match-next" title="Next match">↓</button>
+      </div>
       <button class="toolbar-btn brain" id="brain-search-btn" style="display:none">⚡ Brain Search</button>
       <button class="toolbar-btn brain" id="brain-save-btn" style="display:none">⬆ Save to Brain</button>
       <button class="toolbar-btn context" id="context-btn" style="display:none" title="Generate AI context summary">◈ Context</button>

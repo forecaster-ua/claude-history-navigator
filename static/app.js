@@ -9,6 +9,9 @@ const BASE = (() => {
 let currentSessionId = null;
 let searchMode = 'text';
 let searchTimer = null;
+let activeSearchQuery = null;
+let matchElements = [];
+let matchIndex = 0;
 
 // ── Bootstrap ────────────────────────────────────────────
 async function init() {
@@ -64,10 +67,11 @@ function renderSidebar(projects) {
       item.innerHTML = `
         <div class="si-meta">
           <span class="si-date">${s.date}</span>
+          <span class="si-ctx-dot ${s.has_context ? 'has-ctx' : ''}" title="${s.has_context ? 'Context generated' : 'No context'}"></span>
           <span class="si-stats">${fmtSize(s.size_bytes)} · ${s.message_count}msg</span>
         </div>
         <div class="si-preview">${esc(s.first_message || '(empty)')}</div>`;
-      item.onclick = () => openSession(s.id, item);
+      item.onclick = () => openSession(s.id, item, activeSearchQuery);
       group.appendChild(item);
     });
 
@@ -76,7 +80,7 @@ function renderSidebar(projects) {
 }
 
 // ── Session viewer ───────────────────────────────────────
-async function openSession(id, itemEl) {
+async function openSession(id, itemEl, query = null) {
   currentSessionId = id;
 
   // Sidebar active state
@@ -109,6 +113,7 @@ async function openSession(id, itemEl) {
   try {
     const d = await api(`/api/sessions/${id}`);
     renderMessages(d.messages || []);
+    if (query) highlightQuery(query);
   } catch (e) {
     msg.innerHTML = `<div class="empty-state">Error: ${esc(e.message)}</div>`;
   }
@@ -237,6 +242,7 @@ function setupSearch() {
 }
 
 async function doSearch(q) {
+  activeSearchQuery = q;
   const sr = document.getElementById('search-results');
   sr.style.display = 'block';
   document.getElementById('messages').style.display = 'none';
@@ -273,10 +279,8 @@ function renderSearchResults(data, q) {
         </div>
         <div class="sr-snippet">${r.snippet || ''}</div>`;
       card.onclick = () => {
-        clearSearch();
-        // find sidebar item
         const item = document.querySelector(`.session-item[data-id="${r.id}"]`);
-        openSession(r.id, item);
+        openSession(r.id, item, q);
       };
     } else {
       const pct = r.similarity ? Math.round(r.similarity * 100) : null;
@@ -293,6 +297,8 @@ function renderSearchResults(data, q) {
 }
 
 function clearSearch() {
+  activeSearchQuery = null;
+  clearHighlights();
   document.getElementById('search-results').style.display = 'none';
   document.getElementById('messages').style.display = 'flex';
 }
@@ -737,11 +743,112 @@ async function openSettings() {
 }
 
 // ── Refresh ──────────────────────────────────────────────
-document.getElementById('refresh-btn').onclick = async () => {
+async function doRefresh(btnEl) {
+  if (btnEl) btnEl.disabled = true;
   document.getElementById('stats').textContent = '…';
-  await api('/api/index/refresh', { method: 'POST' });
-  await Promise.all([loadStats(), loadSessions()]);
-  toast('Index refreshed ✓');
+  try {
+    const r = await api('/api/index/refresh', { method: 'POST' });
+    await Promise.all([loadStats(), loadSessions()]);
+    const parts = [];
+    if (r.added)   parts.push(`+${r.added} new`);
+    if (r.removed) parts.push(`-${r.removed} removed`);
+    parts.push(`${r.total_sessions} total`);
+    toast('↻ ' + parts.join(' · '));
+  } finally {
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+
+document.getElementById('refresh-btn').onclick = () =>
+  doRefresh(document.getElementById('refresh-btn'));
+
+document.getElementById('sidebar-refresh-btn').onclick = () =>
+  doRefresh(document.getElementById('sidebar-refresh-btn'));
+
+// ── Search highlight & navigation ────────────────────────
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightQuery(query) {
+  clearHighlights();
+  const terms = query.trim().split(/\s+/).filter(t => t.length > 1);
+  if (!terms.length) return;
+
+  const testRe  = new RegExp(terms.map(escapeRe).join('|'), 'i');
+  const splitRe = new RegExp(`(${terms.map(escapeRe).join('|')})`, 'gi');
+
+  const container = document.getElementById('messages');
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const p = node.parentElement;
+      if (p.closest('.tool-body') || p.closest('.msg-meta') || p.closest('.tool-header'))
+        return NodeFilter.FILTER_SKIP;
+      return testRe.test(node.textContent) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+    }
+  });
+
+  const textNodes = [];
+  let node;
+  while ((node = walker.nextNode())) textNodes.push(node);
+
+  textNodes.forEach(textNode => {
+    const frag = document.createDocumentFragment();
+    textNode.textContent.split(splitRe).forEach(part => {
+      if (!part) return;
+      if (testRe.test(part)) {
+        const mark = document.createElement('mark');
+        mark.className = 'search-hl';
+        mark.textContent = part;
+        frag.appendChild(mark);
+      } else {
+        frag.appendChild(document.createTextNode(part));
+      }
+    });
+    textNode.parentNode.replaceChild(frag, textNode);
+  });
+
+  matchElements = Array.from(container.querySelectorAll('mark.search-hl'));
+  matchIndex = 0;
+  updateMatchNav();
+  if (matchElements.length) scrollToMatch(0);
+}
+
+function clearHighlights() {
+  document.querySelectorAll('mark.search-hl').forEach(mark => {
+    mark.parentNode.replaceChild(document.createTextNode(mark.textContent), mark);
+  });
+  // Merge adjacent text nodes
+  document.getElementById('messages').normalize();
+  matchElements = [];
+  matchIndex = 0;
+  document.getElementById('match-nav').style.display = 'none';
+}
+
+function scrollToMatch(idx) {
+  if (!matchElements.length) return;
+  matchElements.forEach(m => m.classList.remove('current'));
+  matchElements[idx].classList.add('current');
+  matchElements[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('match-count').textContent = `${idx + 1}/${matchElements.length}`;
+}
+
+function updateMatchNav() {
+  const nav = document.getElementById('match-nav');
+  if (!matchElements.length) { nav.style.display = 'none'; return; }
+  nav.style.display = 'flex';
+  document.getElementById('match-count').textContent = `1/${matchElements.length}`;
+}
+
+document.getElementById('match-prev').onclick = () => {
+  if (!matchElements.length) return;
+  matchIndex = (matchIndex - 1 + matchElements.length) % matchElements.length;
+  scrollToMatch(matchIndex);
+};
+document.getElementById('match-next').onclick = () => {
+  if (!matchElements.length) return;
+  matchIndex = (matchIndex + 1) % matchElements.length;
+  scrollToMatch(matchIndex);
 };
 
 // ── Utils ────────────────────────────────────────────────
