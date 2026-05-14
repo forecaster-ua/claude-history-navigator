@@ -4,15 +4,13 @@ A web UI for browsing, searching, and analyzing your [Claude Code](https://claud
 
 Claude Code stores every conversation in `~/.claude/projects/*/` as JSONL files. This tool gives you a two-panel interface to navigate them, full-text and semantic search, AI-generated context summaries, and a CLI for quick access after `/clear`.
 
-![Claude History Navigator](https://raw.githubusercontent.com/forecaster-ua/claude-history-navigator/main/static/favicon.svg)
-
 ---
 
 ## Features
 
 - **Two-panel UI** — project tree on the left, conversation viewer on the right
 - **Full-text search** — SQLite FTS5 across all sessions and all projects
-- **Semantic search** — optional integration with [open-brain](https://github.com/forecaster-ua/open-brain) API
+- **Semantic search** — optional integration with [open-brain](https://github.com/postnikov/open-brain) API (needs additional setup and OpenAI Key to operate)
 - **AI Context generation** — structured summaries via any LLM provider
   - Languages: EN / **UA** / RU / IT / DE / ES / PT-BR / Auto-detect
   - Modes: Short / Declarative / Full / Max
@@ -158,7 +156,7 @@ sudo nginx -s reload
 
 ## Brain API (Optional)
 
-If you run [open-brain](https://github.com/forecaster-ua/open-brain) on `localhost:3100`, semantic search and "Save to Brain" features become available automatically.
+If you run [open-brain](https://github.com/postnikov/open-brain) on `localhost:3100`, semantic search and "Save to Brain" features become available automatically.
 
 The Brain API is **not required** — text search and context generation work without it.
 
