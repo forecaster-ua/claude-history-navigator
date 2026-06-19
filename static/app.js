@@ -593,15 +593,49 @@ function updateContextBtns() {
 }
 
 function markdownToHtml(md) {
-  return md
-    .replace(/^# (.+)$/gm, '<h1 style="font-size:15px;color:var(--text);margin-bottom:8px">$1</h1>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3 style="color:var(--text2);font-size:13px;margin:10px 0 4px">$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`([^`]+)`/g, '<code style="background:var(--bg3);padding:1px 4px;border-radius:3px;font-family:monospace;font-size:11px">$1</code>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/gs, m => `<ul style="padding-left:16px;margin:4px 0">${m}</ul>`)
-    .replace(/\n/g, '<br>');
+  function inline(text) {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+
+  const lines = md.replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+  let inUl = false;
+  let inOl = false;
+
+  function closeList() {
+    if (inUl) { out.push('</ul>'); inUl = false; }
+    if (inOl) { out.push('</ol>'); inOl = false; }
+  }
+
+  for (const line of lines) {
+    if (/^# /.test(line)) {
+      closeList();
+      out.push(`<h1>${inline(line.slice(2))}</h1>`);
+    } else if (/^## /.test(line)) {
+      closeList();
+      out.push(`<h2>${inline(line.slice(3))}</h2>`);
+    } else if (/^### /.test(line)) {
+      closeList();
+      out.push(`<h3>${inline(line.slice(4))}</h3>`);
+    } else if (/^[-•] /.test(line)) {
+      if (inOl) { out.push('</ol>'); inOl = false; }
+      if (!inUl) { out.push('<ul>'); inUl = true; }
+      out.push(`<li>${inline(line.replace(/^[-•] /, ''))}</li>`);
+    } else if (/^\d+\. /.test(line)) {
+      if (inUl) { out.push('</ul>'); inUl = false; }
+      if (!inOl) { out.push('<ol>'); inOl = true; }
+      out.push(`<li>${inline(line.replace(/^\d+\. /, ''))}</li>`);
+    } else if (line.trim() === '') {
+      closeList();
+    } else {
+      closeList();
+      out.push(`<p>${inline(line)}</p>`);
+    }
+  }
+  closeList();
+  return out.join('\n');
 }
 
 function showModal(markdown, providerLabel) {
