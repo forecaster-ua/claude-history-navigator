@@ -744,6 +744,54 @@ mark.search-hl.current {
 }
 #ctx-popup-actions .toolbar-btn { flex: 1; text-align: center; justify-content: center; }
 
+#ctx-popup.custom-mode {
+  width: 540px;
+}
+#ctx-custom-prompt-row {
+  padding: 10px 16px 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ctx-custom-label {
+  font-size: 11px; font-weight: 600; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.ctx-template-loader {
+  display: flex; gap: 6px; align-items: center;
+}
+.ctx-template-loader select {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--text2);
+  font-size: 12px;
+  outline: none;
+}
+.ctx-template-loader .toolbar-btn {
+  white-space: nowrap;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+#ctx-custom-prompt {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 12px;
+  font-family: monospace;
+  resize: vertical;
+  min-height: 260px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  padding: 8px 10px;
+  line-height: 1.5;
+  outline: none;
+}
+#ctx-custom-prompt:focus {
+  border-color: var(--accent);
+}
+
 /* ── Settings panel ─────────────────────────────────────── */
 #settings-overlay {
   position: fixed; inset: 0;

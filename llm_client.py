@@ -67,8 +67,15 @@ PROVIDERS = {
 DEFAULT_MODELS = {
     "google":    "gemini-2.5-flash",
     "anthropic": "claude-sonnet-4-6",
-    "openai":    "gpt-4o",
-    "deepseek":  "deepseek-chat",
+    "openai":    "gpt-5.4-mini",
+    "deepseek":  "deepseek-v4-flash",
+}
+
+DEFAULT_TEMPERATURES = {
+    "google":    0.4,
+    "anthropic": 0.3,
+    "openai":    0.3,
+    "deepseek":  0.5,
 }
 
 
@@ -87,6 +94,7 @@ def get_available_providers() -> list[dict]:
             "label": info["label"],
             "has_key": has_key,
             "default_model": DEFAULT_MODELS.get(pid, ""),
+            "default_temperature": DEFAULT_TEMPERATURES.get(pid, 0.4),
         })
     return result
 
@@ -115,25 +123,29 @@ def set_env_key(provider: str, api_key: str):
 
 
 async def generate(prompt: str, system: str = "",
-                   provider: str = None, model: str = None) -> str:
+                   provider: str = None, model: str = None,
+                   temperature: float = None) -> str:
     cfg = get_config()
     provider = provider or cfg["provider"]
     model = model or cfg["model"]
     key = _get_key(provider)
 
-    logger.info(f"LLM generate: provider={provider} model={model}")
+    if temperature is None:
+        temperature = cfg.get("temperature", DEFAULT_TEMPERATURES.get(provider, 0.4))
+
+    logger.info(f"LLM generate: provider={provider} model={model} temperature={temperature}")
 
     if provider == "google":
         from google import genai
         from google.genai import types
         client = genai.Client(api_key=key)
-        contents = prompt
         config = types.GenerateContentConfig(
             system_instruction=system if system else None,
             max_output_tokens=16384,
+            temperature=temperature,
         )
         response = client.models.generate_content(
-            model=model, contents=contents, config=config
+            model=model, contents=prompt, config=config
         )
         return response.text
 
@@ -143,6 +155,7 @@ async def generate(prompt: str, system: str = "",
         msg = client.messages.create(
             model=model,
             max_tokens=16384,
+            temperature=temperature,
             system=system or "You are a helpful assistant.",
             messages=[{"role": "user", "content": prompt}]
         )
@@ -157,7 +170,7 @@ async def generate(prompt: str, system: str = "",
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         resp = client.chat.completions.create(
-            model=model, messages=messages, max_tokens=16384
+            model=model, messages=messages, max_tokens=16384, temperature=temperature
         )
         return resp.choices[0].message.content
 

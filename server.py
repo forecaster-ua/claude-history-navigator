@@ -299,29 +299,183 @@ CONTEXT_MODE_PROMPTS = {
     "full": (
         "Analyze the following conversation and create a structured context in Markdown.\n\n"
         "Use these sections:\n"
-        "## What we worked on\n"
+        "## Tasks overview\n"
+        "For each task in this session, briefly note its status:\n"
+        "- [DONE] tasks completed fully\n"
+        "- [IN PROGRESS] tasks started but not finished\n"
+        "- [DROPPED] tasks abandoned or deferred\n\n"
         "## Problems and challenges\n"
         "## Iterations and solutions\n"
         "## Key decisions\n"
+        "## Commands and file paths\n"
+        "List all significant shell commands run and file paths created/modified.\n\n"
         "## Discussions and ideas\n"
         "## Plans and next steps\n\n"
+        "## Last task — detailed stop point\n"
+        "Describe in detail where the session ended: what was the last task, "
+        "what exact step was reached, what remains to be done, and what the "
+        "obvious next action is to continue.\n\n"
         "CONVERSATION:\n{text}"
     ),
     "max": (
         "Analyze the following conversation and create a comprehensive context in Markdown.\n\n"
         "Use these sections:\n"
-        "## What we worked on\n"
-        "## Problems and challenges\n"
-        "## Iterations and solutions (include specific approaches tried)\n"
+        "## Tasks overview\n"
+        "For each task, mark its lifecycle stage:\n"
+        "- [DONE] fully completed (include what the outcome was)\n"
+        "- [IN PROGRESS] partially done (include what step was reached)\n"
+        "- [DROPPED] abandoned (include why, if known)\n\n"
+        "## Problems and challenges (include root causes where identified)\n"
+        "## Iterations and solutions (include specific approaches tried and why each was chosen/discarded)\n"
         "## Key decisions (with rationale)\n"
+        "## Commands and file paths\n"
+        "List every significant shell command, script, and file path touched — "
+        "created, modified, deleted. Group by task if possible.\n\n"
         "## Code and architecture highlights\n"
         "## Discussions and ideas\n"
         "## Plans and next steps\n"
         "## Open questions\n\n"
+        "## Last task — detailed stop point\n"
+        "This is the most important section. Describe precisely:\n"
+        "- What the last task was\n"
+        "- What was already completed within it\n"
+        "- The exact step or action where the session ended\n"
+        "- What remains to do and in what order\n"
+        "- The single most obvious next action to resume work\n"
+        "Be specific: include file names, function names, error messages, or "
+        "command output if relevant.\n\n"
         "Be thorough — include code patterns, architectural choices, and specific details.\n\n"
         "CONVERSATION:\n{text}"
     ),
 }
+
+CONTEXT_MODE_PROMPTS_I18N = {
+    "ru": {
+        "short": (
+            "Кратко изложи эту переписку в 2-3 абзацах: что было сделано, "
+            "какие приняты ключевые решения, какие следующие шаги запланированы.\n\n"
+            "ПЕРЕПИСКА:\n{text}"
+        ),
+        "declarative": (
+            "Извлеки ключевые факты из этой переписки только в виде буллетов (без текста):\n"
+            "• Что было создано/решено\n• Возникшие проблемы\n• Найденные решения\n"
+            "• Ключевые решения\n• Следующие шаги\n\nПЕРЕПИСКА:\n{text}"
+        ),
+        "full": (
+            "Проанализируй следующую переписку и создай структурированный контекст в Markdown.\n\n"
+            "Используй эти разделы:\n"
+            "## Обзор задач\n"
+            "Для каждой задачи кратко укажи статус:\n"
+            "- [ВЫПОЛНЕНО] задачи, завершённые полностью\n"
+            "- [В ПРОЦЕССЕ] задачи, начатые, но не завершённые\n"
+            "- [ОТМЕНЕНО] задачи, брошенные или отложенные\n\n"
+            "## Проблемы и трудности\n"
+            "## Итерации и решения\n"
+            "## Ключевые решения\n"
+            "## Команды и пути к файлам\n"
+            "Перечисли все значимые команды оболочки и пути к созданным/изменённым файлам.\n\n"
+            "## Обсуждения и идеи\n"
+            "## Планы и следующие шаги\n\n"
+            "## Последняя задача — детальная точка остановки\n"
+            "Опиши подробно, где закончилась сессия: какой была последняя задача, "
+            "до какого именно шага дошли, что осталось сделать и какое очевидное "
+            "следующее действие для продолжения.\n\n"
+            "ПЕРЕПИСКА:\n{text}"
+        ),
+        "max": (
+            "Проанализируй следующую переписку и создай всесторонний контекст в Markdown.\n\n"
+            "Используй эти разделы:\n"
+            "## Обзор задач\n"
+            "Для каждой задачи укажи стадию жизненного цикла:\n"
+            "- [ВЫПОЛНЕНО] полностью завершено (укажи результат)\n"
+            "- [В ПРОЦЕССЕ] частично выполнено (укажи, до какого шага дошли)\n"
+            "- [ОТМЕНЕНО] брошено (укажи причину, если известна)\n\n"
+            "## Проблемы и трудности (включая первопричины, если выявлены)\n"
+            "## Итерации и решения (включая конкретные подходы и причины их выбора/отказа)\n"
+            "## Ключевые решения (с обоснованием)\n"
+            "## Команды и пути к файлам\n"
+            "Перечисли каждую значимую команду, скрипт и затронутый путь — "
+            "созданные, изменённые, удалённые. Группируй по задачам, если возможно.\n\n"
+            "## Архитектурные и кодовые особенности\n"
+            "## Обсуждения и идеи\n"
+            "## Планы и следующие шаги\n"
+            "## Открытые вопросы\n\n"
+            "## Последняя задача — детальная точка остановки\n"
+            "Это самый важный раздел. Опиши точно:\n"
+            "- Какой была последняя задача\n"
+            "- Что уже было выполнено в её рамках\n"
+            "- Точный шаг, на котором закончилась сессия\n"
+            "- Что осталось сделать и в каком порядке\n"
+            "- Единственное наиболее очевидное следующее действие\n"
+            "Будь конкретен: включай имена файлов, функций, сообщения об ошибках.\n\n"
+            "Будь подробен — включай шаблоны кода, архитектурные решения и детали.\n\n"
+            "ПЕРЕПИСКА:\n{text}"
+        ),
+    },
+    "uk": {
+        "short": (
+            "Стисло виклади цю переписку у 2-3 абзацах: що було зроблено, "
+            "які ключові рішення прийнято, які наступні кроки заплановано.\n\n"
+            "ПЕРЕПИСКА:\n{text}"
+        ),
+        "declarative": (
+            "Витягни ключові факти з цієї переписки лише у вигляді буллетів (без тексту):\n"
+            "• Що було створено/вирішено\n• Проблеми, що виникли\n• Знайдені рішення\n"
+            "• Ключові рішення\n• Наступні кроки\n\nПЕРЕПИСКА:\n{text}"
+        ),
+        "full": (
+            "Проаналізуй наступну переписку і створи структурований контекст у Markdown.\n\n"
+            "Використовуй ці розділи:\n"
+            "## Огляд завдань\n"
+            "Для кожного завдання коротко вкажи статус:\n"
+            "- [ВИКОНАНО] завдання, завершені повністю\n"
+            "- [В ПРОЦЕСІ] завдання, розпочаті, але не завершені\n"
+            "- [СКАСОВАНО] завдання, закинуті або відкладені\n\n"
+            "## Проблеми та труднощі\n"
+            "## Ітерації та рішення\n"
+            "## Ключові рішення\n"
+            "## Команди та шляхи до файлів\n"
+            "Перелічи всі значущі команди оболонки та шляхи до створених/змінених файлів.\n\n"
+            "## Обговорення та ідеї\n"
+            "## Плани та наступні кроки\n\n"
+            "## Остання задача — детальна точка зупинки\n"
+            "Опиши докладно, де закінчилась сесія: якою була остання задача, "
+            "до якого саме кроку дійшли, що залишилося зробити і яка очевидна "
+            "наступна дія для продовження.\n\n"
+            "ПЕРЕПИСКА:\n{text}"
+        ),
+        "max": (
+            "Проаналізуй наступну переписку і створи всебічний контекст у Markdown.\n\n"
+            "Використовуй ці розділи:\n"
+            "## Огляд завдань\n"
+            "Для кожного завдання вкажи стадію життєвого циклу:\n"
+            "- [ВИКОНАНО] повністю завершено (вкажи результат)\n"
+            "- [В ПРОЦЕСІ] частково виконано (вкажи, до якого кроку дійшли)\n"
+            "- [СКАСОВАНО] закинуто (вкажи причину, якщо відома)\n\n"
+            "## Проблеми та труднощі (включно з першопричинами, якщо виявлені)\n"
+            "## Ітерації та рішення (включно з конкретними підходами і причинами вибору/відмови)\n"
+            "## Ключові рішення (з обґрунтуванням)\n"
+            "## Команди та шляхи до файлів\n"
+            "Перелічи кожну значущу команду, скрипт і торкнутий шлях — "
+            "створені, змінені, видалені. Групуй за завданнями, якщо можливо.\n\n"
+            "## Архітектурні та кодові особливості\n"
+            "## Обговорення та ідеї\n"
+            "## Плани та наступні кроки\n"
+            "## Відкриті питання\n\n"
+            "## Остання задача — детальна точка зупинки\n"
+            "Це найважливіший розділ. Опиши точно:\n"
+            "- Якою була остання задача\n"
+            "- Що вже було виконано в її рамках\n"
+            "- Точний крок, на якому закінчилась сесія\n"
+            "- Що залишилося зробити і в якому порядку\n"
+            "- Єдина найочевидніша наступна дія для відновлення роботи\n"
+            "Будь конкретним: включай імена файлів, функцій, повідомлення про помилки.\n\n"
+            "Будь докладним — включай шаблони коду, архітектурні рішення і деталі.\n\n"
+            "ПЕРЕПИСКА:\n{text}"
+        ),
+    },
+}
+
 
 DELTA_PROMPT = (
     "Existing context summary:\n{existing}\n\n"
@@ -467,6 +621,7 @@ class ContextRequest(BaseModel):
     mode: str = "full"
     provider: Optional[str] = None
     model: Optional[str] = None
+    custom_prompt: Optional[str] = None
 
 
 @app.post("/api/sessions/{session_id}/context")
@@ -489,9 +644,15 @@ async def create_context(session_id: str, req: ContextRequest):
     if lang == "auto":
         lang = detect_lang(full_text)
 
-    mode = req.mode if req.mode in CONTEXT_MODE_PROMPTS else "full"
-    system = CONTEXT_SYSTEMS.get(lang, CONTEXT_SYSTEMS["en"])
-    prompt = CONTEXT_MODE_PROMPTS[mode].format(text=full_text)
+    if req.custom_prompt:
+        mode = "custom"
+        system = CONTEXT_SYSTEMS.get(lang, CONTEXT_SYSTEMS["en"])
+        template = req.custom_prompt if "{text}" in req.custom_prompt else req.custom_prompt + "\n\nCONVERSATION:\n{text}"
+        prompt = template.format(text=full_text)
+    else:
+        mode = req.mode if req.mode in CONTEXT_MODE_PROMPTS else "full"
+        system = CONTEXT_SYSTEMS.get(lang, CONTEXT_SYSTEMS["en"])
+        prompt = CONTEXT_MODE_PROMPTS[mode].format(text=full_text)
 
     cfg = get_config()
     use_provider = req.provider or cfg["provider"]
@@ -582,6 +743,7 @@ async def llm_config_get():
 class LLMConfigUpdate(BaseModel):
     provider: str | None = None
     model: str | None = None
+    temperature: float | None = None
     max_input_chars: int | None = None
 
 
@@ -595,6 +757,13 @@ async def llm_config_update(upd: LLMConfigUpdate):
 @app.get("/api/providers")
 async def list_providers():
     return {"providers": get_available_providers()}
+
+
+@app.get("/api/context/template")
+async def get_context_template(mode: str = "full", lang: str = "en"):
+    lang_prompts = CONTEXT_MODE_PROMPTS_I18N.get(lang, CONTEXT_MODE_PROMPTS)
+    template = lang_prompts.get(mode) or CONTEXT_MODE_PROMPTS.get(mode, "")
+    return {"template": template}
 
 
 class ProviderKeyRequest(BaseModel):

@@ -99,7 +99,21 @@
         <button class="pill" data-val="declarative">Declarative</button>
         <button class="pill active" data-val="full">Full</button>
         <button class="pill" data-val="max">Max</button>
+        <button class="pill" data-val="custom">Custom</button>
       </div>
+    </div>
+    <div id="ctx-custom-prompt-row" style="display:none">
+      <label class="ctx-custom-label">Custom Prompt</label>
+      <div class="ctx-template-loader">
+        <select id="ctx-template-select">
+          <option value="short">Short</option>
+          <option value="declarative">Declarative</option>
+          <option value="full" selected>Full</option>
+          <option value="max">Max</option>
+        </select>
+        <button class="toolbar-btn" id="ctx-load-template-btn">Load template</button>
+      </div>
+      <textarea id="ctx-custom-prompt" placeholder="Write your prompt here...&#10;Use {text} where the conversation should be inserted."></textarea>
     </div>
     <div class="ctx-popup-row">
       <label>Provider</label>
@@ -147,6 +161,10 @@
         <div class="settings-row">
           <label>Model</label>
           <input type="text" id="set-model" placeholder="e.g. gemini-2.5-flash">
+        </div>
+        <div class="settings-row">
+          <label>Temperature <small id="set-temp-hint" style="opacity:.6"></small></label>
+          <input type="number" id="set-temperature" min="0" max="2" step="0.1" style="width:80px">
         </div>
         <button class="toolbar-btn context" id="set-save-btn">Save</button>
       </section>

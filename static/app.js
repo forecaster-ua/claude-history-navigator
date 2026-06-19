@@ -128,7 +128,7 @@ function renderMessages(messages) {
     return;
   }
 
-  messages.forEach(m => {
+  [...messages].reverse().forEach(m => {
     const isUser = m.role === 'user';
     const wrap = el('div', `msg ${isUser ? 'user' : 'assistant'}`);
 
@@ -330,6 +330,21 @@ function getPillVal(groupId) {
   return document.querySelector(`#${groupId} .pill.active`)?.dataset.val || null;
 }
 
+async function fetchTemplate(mode, lang) {
+  try {
+    const d = await api(`/api/context/template?mode=${encodeURIComponent(mode)}&lang=${encodeURIComponent(lang)}`);
+    return d.template || '';
+  } catch { return ''; }
+}
+
+function toggleCustomPromptRow(mode) {
+  const row = document.getElementById('ctx-custom-prompt-row');
+  const popup = document.getElementById('ctx-popup');
+  const isCustom = mode === 'custom';
+  if (row) row.style.display = isCustom ? '' : 'none';
+  if (popup) popup.classList.toggle('custom-mode', isCustom);
+}
+
 function initPillGroup(groupId, lsKey) {
   const saved = localStorage.getItem(lsKey);
   const group = document.getElementById(groupId);
@@ -342,9 +357,14 @@ function initPillGroup(groupId, lsKey) {
       group.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
       p.classList.add('active');
       localStorage.setItem(lsKey, p.dataset.val);
+      if (groupId === 'ctx-mode-pills') toggleCustomPromptRow(p.dataset.val);
       refreshCtxPopupState();
     };
   });
+  if (groupId === 'ctx-mode-pills') {
+    const active = group.querySelector('.pill.active');
+    toggleCustomPromptRow(active?.dataset.val);
+  }
 }
 
 function populateProviderSelect(selectId, lsKey) {
@@ -405,6 +425,22 @@ function openCtxPopup() {
   initPillGroup('ctx-lang-pills', 'ctx_lang');
   initPillGroup('ctx-mode-pills', 'ctx_mode');
   populateProviderSelect('ctx-provider-select', 'ctx_provider');
+
+  const ta = document.getElementById('ctx-custom-prompt');
+  if (ta) {
+    ta.value = localStorage.getItem('ctx_custom_prompt') || '';
+    ta.oninput = () => localStorage.setItem('ctx_custom_prompt', ta.value);
+  }
+  const loadBtn = document.getElementById('ctx-load-template-btn');
+  const tmplSelect = document.getElementById('ctx-template-select');
+  if (loadBtn && ta && tmplSelect) {
+    loadBtn.onclick = async () => {
+      const lang = getPillVal('ctx-lang-pills') || 'en';
+      const tpl = await fetchTemplate(tmplSelect.value, lang);
+      if (tpl) { ta.value = tpl; localStorage.setItem('ctx_custom_prompt', tpl); }
+    };
+  }
+
   refreshCtxPopupState();
   document.getElementById('ctx-popup-overlay').style.display = 'flex';
 }
@@ -425,6 +461,13 @@ async function runContextGeneration(endpoint) {
   const mode = getPillVal('ctx-mode-pills') || 'full';
   const provider = document.getElementById('ctx-provider-select').value;
   const providerObj = ctxProviders.find(p => p.id === provider);
+  const customPrompt = mode === 'custom'
+    ? (document.getElementById('ctx-custom-prompt')?.value?.trim() || '')
+    : null;
+  if (mode === 'custom' && !customPrompt) {
+    toast('Enter a custom prompt before generating.', true);
+    return;
+  }
 
   document.getElementById('ctx-popup-overlay').style.display = 'none';
 
@@ -438,11 +481,17 @@ async function runContextGeneration(endpoint) {
     const d = await api(`/api/sessions/${currentSessionId}/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lang, mode, provider, model: providerObj?.default_model }),
+      body: JSON.stringify({ lang, mode, provider, model: providerObj?.default_model, custom_prompt: customPrompt }),
     });
     ctxCacheInfo = { cached: true, ...d, generated_ago: 'just now', is_stale: false };
     updateContextBtns();
-    showModal(d.context_text, `${d.provider} / ${d.model} · ${lang.toUpperCase()} / ${mode}`);
+    // After generate/update, show ALL context tabs so other variations aren't hidden
+    const allCtx = await api(`/api/sessions/${currentSessionId}/contexts`);
+    if (allCtx.contexts?.length > 1) {
+      showModalWithTabs(allCtx.contexts);
+    } else {
+      showModal(d.context_text, `${d.provider} / ${d.model} · ${lang.toUpperCase()} / ${mode}`);
+    }
   } catch (e) {
     toast('Context error: ' + e.message, true);
   } finally {
@@ -686,7 +735,20 @@ async function openSettings() {
     provSelect.appendChild(opt);
   });
 
+  function applyProviderDefaults(providerId) {
+    const p = provData.providers.find(x => x.id === providerId);
+    if (!p) return;
+    document.getElementById('set-model').value = p.default_model;
+    document.getElementById('set-temperature').value = p.default_temperature;
+    document.getElementById('set-temp-hint').textContent = `(default for ${p.label})`;
+  }
+
+  provSelect.onchange = () => applyProviderDefaults(provSelect.value);
+
   document.getElementById('set-model').value = cfg.model || '';
+  const savedTemp = cfg.temperature ?? provData.providers.find(p => p.id === cfg.provider)?.default_temperature ?? 0.4;
+  document.getElementById('set-temperature').value = savedTemp;
+  document.getElementById('set-temp-hint').textContent = cfg.temperature != null ? '' : `(default for ${provData.providers.find(p => p.id === cfg.provider)?.label || cfg.provider})`;
 
   const keysList = document.getElementById('set-keys-list');
   keysList.innerHTML = '';
@@ -730,11 +792,13 @@ async function openSettings() {
   document.getElementById('set-save-btn').onclick = async () => {
     const provider = provSelect.value;
     const model = document.getElementById('set-model').value.trim();
+    const temperature = parseFloat(document.getElementById('set-temperature').value);
     try {
       await api('/api/llm/config', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, model }),
+        body: JSON.stringify({ provider, model, temperature: isNaN(temperature) ? null : temperature }),
       });
+      await loadProviders();
       toast('Settings saved ✓');
     } catch (e) { toast('Save failed: ' + e.message, true); }
   };
