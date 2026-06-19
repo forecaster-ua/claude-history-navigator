@@ -397,6 +397,7 @@ function populateProviderSelect(selectId, lsKey) {
       const modelInput = document.getElementById('set-model');
       if (modelInput && !modelInput.value) modelInput.value = p.default_model;
     }
+    if (selectId === 'ctx-provider-select') refreshCtxPopupState();
   };
 }
 
