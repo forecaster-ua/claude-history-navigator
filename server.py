@@ -484,6 +484,18 @@ CONTEXT_MODE_PROMPTS_I18N = {
 }
 
 
+def _strip_md_fence(text: str) -> str:
+    """Remove outer ```markdown or ``` wrapper some LLMs add around their output."""
+    text = text.strip()
+    if text.startswith("```"):
+        first_newline = text.find("\n")
+        if first_newline != -1 and text.rstrip().endswith("```"):
+            inner = text[first_newline + 1:].rstrip()
+            if inner.endswith("```"):
+                return inner[:-3].rstrip()
+    return text
+
+
 DELTA_PROMPT = (
     "Existing context summary:\n{existing}\n\n"
     "New messages added since the summary was generated:\n{new_messages}\n\n"
@@ -673,7 +685,7 @@ async def create_context(session_id: str, req: ContextRequest):
         raise HTTPException(502, f"LLM error: {e}")
 
     header = f"# Context: {session_id[:8]}\n**Date:** {row['date']}  **Project:** {row['project_dir']}\n\n"
-    context_text = header + result
+    context_text = header + _strip_md_fence(result)
 
     save_context_cache(session_id, lang, mode, context_text,
                        use_provider, use_model, total_count)
@@ -730,6 +742,7 @@ async def update_context(session_id: str, req: ContextRequest):
     except Exception as e:
         raise HTTPException(502, f"LLM error: {e}")
 
+    result = _strip_md_fence(result)
     save_context_cache(session_id, lang, req.mode, result,
                        use_provider, use_model, total_count)
 
