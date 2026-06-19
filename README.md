@@ -17,7 +17,7 @@ Claude Code stores every conversation in `~/.claude/projects/*/` as JSONL files.
 ### Search
 - **Full-text search** — SQLite FTS5 across all sessions and all projects
 - **Phrase search** — wrap in quotes for exact matches (`"error handling"`)
-- **Semantic search** — optional integration with [open-brain](https://github.com/forecaster-ua/open-brain) API
+- **Semantic search** — optional integration with [open-brain](https://github.com/postnikov/open-brain) API
 - In-session match navigation (jump between highlighted results)
 
 ### AI Context Generation
@@ -211,7 +211,7 @@ Tables: `sessions`, `sessions_fts` (FTS5), `session_contexts` (context cache per
 
 ## Brain API (Optional)
 
-If you run [open-brain](https://github.com/forecaster-ua/open-brain) on `localhost:3100`, semantic search and "Save to Brain" features activate automatically. Text search and context generation work without it.
+If you run [open-brain](https://github.com/postnikov/open-brain) on `localhost:3100`, semantic search and "Save to Brain" features activate automatically. Text search and context generation work without it.
 
 ---
 
