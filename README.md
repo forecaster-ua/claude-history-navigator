@@ -34,9 +34,9 @@ Structured session summaries powered by any LLM provider.
 **Context features:**
 - Languages: **EN** / **UA** / **RU** / IT / DE / ES / PT-BR / Auto-detect
   - EN, UA, RU have full native prompt translations — other languages fall back to EN
-- **Cached per (session × language × mode)** — no redundant LLM calls
+- **Cached per (session × language × mode × provider)** — switching providers shows a fresh Generate button; each provider's output is stored independently
 - **Incremental update** — only sends new messages to LLM when cache exists
-- Multi-tab view — switch between cached context variants without regenerating
+- Multi-tab view — each cached variant shows a short provider badge: **GEM** / **ANT** / **OAI** / **DSK**
 
 ### LLM Providers & Settings
 - **Multi-provider** — Google Gemini, Anthropic Claude, OpenAI, DeepSeek
@@ -197,7 +197,7 @@ claude-history/
 ```
 
 **Storage:** SQLite (`claude_history.db`) with WAL mode.
-Tables: `sessions`, `sessions_fts` (FTS5), `session_contexts` (context cache per session × language × mode).
+Tables: `sessions`, `sessions_fts` (FTS5), `session_contexts` (context cache per session × language × mode × provider).
 
 **Indexer:** Scans all JSONL files on startup, then every 60 seconds. Incremental — only re-indexes files modified since last scan.
 

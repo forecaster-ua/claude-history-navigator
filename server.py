@@ -274,6 +274,13 @@ async def download_session(session_id: str):
     )
 
 
+PROVIDER_LABELS = {
+    "google":    "GEM",
+    "anthropic": "ANT",
+    "openai":    "OAI",
+    "deepseek":  "DSK",
+}
+
 # ── Context prompts ───────────────────────────────────────────────────────────
 
 CONTEXT_SYSTEMS = {
@@ -568,6 +575,7 @@ async def list_contexts(session_id: str):
             "context_text": r["context_text"],
             "generated_ago": ago,
             "provider": r["provider"],
+            "provider_label": PROVIDER_LABELS.get(r["provider"], (r["provider"] or "").upper()[:3]),
             "model": r["model"],
             "message_count": r["message_count"],
             "is_stale": bool(is_stale),
@@ -577,7 +585,7 @@ async def list_contexts(session_id: str):
 
 
 @app.get("/api/sessions/{session_id}/context")
-async def get_context(session_id: str, lang: str = "en", mode: str = "full"):
+async def get_context(session_id: str, lang: str = "en", mode: str = "full", provider: str = ""):
     with db() as conn:
         session = conn.execute(
             "SELECT message_count FROM sessions WHERE id=?", (session_id,)
@@ -585,7 +593,7 @@ async def get_context(session_id: str, lang: str = "en", mode: str = "full"):
     if not session:
         raise HTTPException(404, "Session not found")
 
-    cached = get_context_cache(session_id, lang, mode)
+    cached = get_context_cache(session_id, lang, mode, provider)
     if not cached:
         return {"cached": False, "session_message_count": session["message_count"]}
 
@@ -607,6 +615,7 @@ async def get_context(session_id: str, lang: str = "en", mode: str = "full"):
         "language": cached["language"],
         "mode": cached["mode"],
         "provider": cached["provider"],
+        "provider_label": PROVIDER_LABELS.get(cached["provider"], (cached["provider"] or "").upper()[:3]),
         "model": cached["model"],
         "generated_at": cached["generated_at"],
         "generated_ago": gen_ago,
@@ -689,7 +698,9 @@ async def update_context(session_id: str, req: ContextRequest):
     if not row:
         raise HTTPException(404, "Session not found")
 
-    cached = get_context_cache(session_id, req.lang, req.mode)
+    cfg = get_config()
+    use_provider = req.provider or cfg["provider"]
+    cached = get_context_cache(session_id, req.lang, req.mode, use_provider)
     if not cached:
         return await create_context(session_id, req)
 
@@ -712,8 +723,6 @@ async def update_context(session_id: str, req: ContextRequest):
     system = CONTEXT_SYSTEMS.get(lang, CONTEXT_SYSTEMS["en"])
     prompt = DELTA_PROMPT.format(existing=cached["context_text"], new_messages=new_text)
 
-    cfg = get_config()
-    use_provider = req.provider or cfg["provider"]
     use_model = req.model or cfg.get("model", "")
 
     try:

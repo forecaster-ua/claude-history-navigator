@@ -100,10 +100,11 @@ async function openSession(id, itemEl, query = null) {
   ctxCacheInfo = null;
   document.getElementById('context-view-btn').style.display = 'none';
 
-  // Load context cache state for default lang/mode
+  // Load context cache state for default lang/mode/provider
   const lang = localStorage.getItem('ctx_lang') || 'en';
   const mode = localStorage.getItem('ctx_mode') || 'full';
-  api(`/api/sessions/${id}/context?lang=${lang}&mode=${mode}`)
+  const savedProvider = localStorage.getItem('ctx_provider') || '';
+  api(`/api/sessions/${id}/context?lang=${lang}&mode=${mode}&provider=${encodeURIComponent(savedProvider)}`)
     .then(d => { ctxCacheInfo = d; updateContextBtns(); })
     .catch(() => {});
 
@@ -330,6 +331,17 @@ function getPillVal(groupId) {
   return document.querySelector(`#${groupId} .pill.active`)?.dataset.val || null;
 }
 
+const PROVIDER_LABELS = {
+  google:    'GEM',
+  anthropic: 'ANT',
+  openai:    'OAI',
+  deepseek:  'DSK',
+};
+
+function providerLabel(pid) {
+  return PROVIDER_LABELS[pid] || (pid || '').toUpperCase().slice(0, 3) || '?';
+}
+
 async function fetchTemplate(mode, lang) {
   try {
     const d = await api(`/api/context/template?mode=${encodeURIComponent(mode)}&lang=${encodeURIComponent(lang)}`);
@@ -392,9 +404,10 @@ async function refreshCtxPopupState() {
   if (!currentSessionId) return;
   const lang = getPillVal('ctx-lang-pills') || 'en';
   const mode = getPillVal('ctx-mode-pills') || 'full';
+  const provider = document.getElementById('ctx-provider-select')?.value || '';
 
   try {
-    ctxCacheInfo = await api(`/api/sessions/${currentSessionId}/context?lang=${lang}&mode=${mode}`);
+    ctxCacheInfo = await api(`/api/sessions/${currentSessionId}/context?lang=${lang}&mode=${mode}&provider=${encodeURIComponent(provider)}`);
   } catch {
     ctxCacheInfo = null;
   }
@@ -406,8 +419,9 @@ async function refreshCtxPopupState() {
 
   if (ctxCacheInfo?.cached) {
     const info = ctxCacheInfo;
+    const pLabel = info.provider_label || providerLabel(info.provider);
     badge.style.display = 'block';
-    badge.innerHTML = `◈ Cached · ${info.generated_ago} · ${info.provider}/${info.model}` +
+    badge.innerHTML = `◈ Cached · ${info.generated_ago} · <b>${pLabel}</b> / ${info.model}` +
       (info.is_stale ? ` · <span style="color:var(--orange)">⚠ ${info.session_message_count - info.message_count} new messages</span>` : '');
     genBtn.textContent = '↺ Regenerate';
     viewBtn.style.display = '';
@@ -529,23 +543,25 @@ function showModalWithTabs(contexts) {
 
   function renderTab(ctx, idx) {
     const tab = el('div', `modal-tab${ctx.is_stale ? ' stale' : ''}${idx === 0 ? ' active' : ''}`);
-    tab.textContent = `${ctx.language.toUpperCase()}/${ctx.mode} · ${ctx.generated_ago}`;
-    tab.title = `${ctx.provider}/${ctx.model}${ctx.is_stale ? ' · has new messages' : ''}`;
+    const pLabel = ctx.provider_label || providerLabel(ctx.provider);
+    tab.textContent = `${ctx.language.toUpperCase()} / ${ctx.mode} · ${pLabel} · ${ctx.generated_ago}`;
+    tab.title = `${ctx.provider} / ${ctx.model}${ctx.is_stale ? ' · has new messages' : ''}`;
     tab.onclick = () => {
       tabsEl.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       active = ctx;
       renderModalBody(ctx);
       document.getElementById('modal-provider').textContent =
-        `${ctx.provider} / ${ctx.model}`;
+        `${pLabel} · ${ctx.provider} / ${ctx.model}`;
     };
     tabsEl.appendChild(tab);
   }
 
   contexts.forEach((ctx, i) => renderTab(ctx, i));
   renderModalBody(active);
+  const aPLabel = active.provider_label || providerLabel(active.provider);
   document.getElementById('modal-provider').textContent =
-    `${active.provider} / ${active.model}`;
+    `${aPLabel} · ${active.provider} / ${active.model}`;
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 

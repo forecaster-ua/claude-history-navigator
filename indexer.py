@@ -35,6 +35,35 @@ def open_db() -> sqlite3.Connection:
     return _conn(readonly=False)  # WAL allows concurrent reads even without uri ro
 
 
+def _migrate_contexts_pk(conn):
+    """Add provider to PRIMARY KEY of session_contexts if not already there."""
+    info = conn.execute("PRAGMA table_info(session_contexts)").fetchall()
+    pk_cols = {row[1] for row in info if row[5] > 0}
+    if 'provider' in pk_cols:
+        return
+    logger.info("Migrating session_contexts: adding provider to PRIMARY KEY")
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS session_contexts_v2 (
+            session_id    TEXT NOT NULL,
+            language      TEXT NOT NULL,
+            mode          TEXT NOT NULL,
+            provider      TEXT NOT NULL DEFAULT '',
+            context_text  TEXT,
+            generated_at  REAL,
+            model         TEXT,
+            message_count INTEGER,
+            PRIMARY KEY (session_id, language, mode, provider)
+        );
+        INSERT OR IGNORE INTO session_contexts_v2
+            SELECT session_id, language, mode, COALESCE(provider, ''),
+                   context_text, generated_at, model, message_count
+            FROM session_contexts;
+        DROP TABLE session_contexts;
+        ALTER TABLE session_contexts_v2 RENAME TO session_contexts;
+    """)
+    conn.commit()
+
+
 def init_db():
     with _write_lock:
         conn = _conn()
@@ -64,25 +93,26 @@ def init_db():
                     session_id    TEXT NOT NULL,
                     language      TEXT NOT NULL,
                     mode          TEXT NOT NULL,
+                    provider      TEXT NOT NULL DEFAULT '',
                     context_text  TEXT,
                     generated_at  REAL,
-                    provider      TEXT,
                     model         TEXT,
                     message_count INTEGER,
-                    PRIMARY KEY (session_id, language, mode)
+                    PRIMARY KEY (session_id, language, mode, provider)
                 );
             """)
             conn.commit()
+            _migrate_contexts_pk(conn)
         finally:
             conn.close()
 
 
-def get_context_cache(session_id: str, lang: str, mode: str) -> dict | None:
+def get_context_cache(session_id: str, lang: str, mode: str, provider: str = '') -> dict | None:
     conn = open_db()
     try:
         row = conn.execute(
-            "SELECT * FROM session_contexts WHERE session_id=? AND language=? AND mode=?",
-            (session_id, lang, mode)
+            "SELECT * FROM session_contexts WHERE session_id=? AND language=? AND mode=? AND provider=?",
+            (session_id, lang, mode, provider)
         ).fetchone()
         return dict(row) if row else None
     finally:
@@ -96,9 +126,9 @@ def save_context_cache(session_id: str, lang: str, mode: str, text: str,
         try:
             conn.execute("""
                 INSERT OR REPLACE INTO session_contexts
-                (session_id, language, mode, context_text, generated_at, provider, model, message_count)
+                (session_id, language, mode, provider, context_text, generated_at, model, message_count)
                 VALUES (?,?,?,?,?,?,?,?)
-            """, (session_id, lang, mode, text, time.time(), provider, model, message_count))
+            """, (session_id, lang, mode, provider or '', text, time.time(), model, message_count))
             conn.commit()
         finally:
             conn.close()
